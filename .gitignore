@@ -3,3 +3,16 @@ data/
 .env
 .DS_Store
 *.log
+
+# statický build pro Firebase Hosting a ukázky (videa do gitu nepatří, repozitář je veřejný)
+dist/
+media/
+.firebase/
+
+# Terraform: stav a proměnné jsou mimo git (stav je v GCS bucketu)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log

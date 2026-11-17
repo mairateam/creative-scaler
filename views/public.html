@@ -7,9 +7,6 @@
 <meta name="description" content="Kolik kreativ opravdu potřebujete na Meta Ads?">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#083027">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap">
 <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body>
@@ -24,7 +21,8 @@
         <button type="button" class="lang" data-lang="sk">SK</button>
         <button type="button" class="lang" data-lang="en">EN</button>
       </div>
-      <a class="btn primary" href="#cta" data-i18n="cta_btn"></a>
+      <!-- bez poptávkového formuláře (features.leadForm) vede na web MAIRA; s formulářem public.js přepne na #cta -->
+      <a class="btn primary" id="headCta" href="https://mairateam.com/" target="_blank" rel="noopener" data-i18n="cta_btn"></a>
     </nav>
   </header>
 
@@ -184,13 +182,16 @@
 </section>
 
 <!-- ============ POPTÁVKA (bílá) ============ -->
+<!-- Formulář je skrytý a ukáže se jen se zapnutým features.leadForm (server, který poptávky přijímá).
+     Bez něj (statická stránka na Firebase Hosting) vede tlačítko na web MAIRA. -->
 <section class="section on-light" id="cta">
   <div class="wrap cta-grid">
     <div>
       <span class="eyebrow-lg" data-i18n="cta_eyebrow"></span>
       <h2 data-i18n="cta_h"></h2>
       <p class="sub" id="ctaSub"></p>
-      <form id="ctaForm" class="cta-form" novalidate>
+      <p class="cta-link" id="ctaLinkBox"><a class="btn primary" href="https://mairateam.com/" target="_blank" rel="noopener" data-i18n="cta_btn"></a></p>
+      <form id="ctaForm" class="cta-form" novalidate hidden>
         <div class="field"><label for="cName" data-i18n="f_name"></label><div class="in"><input id="cName" name="name" type="text" required maxlength="120" autocomplete="name"></div></div>
         <div class="field"><label for="cCompany" data-i18n="f_company"></label><div class="in"><input id="cCompany" name="company" type="text" required maxlength="160" autocomplete="organization"></div></div>
         <div class="field full"><label for="cEmail" data-i18n="f_email"></label><div class="in"><input id="cEmail" name="email" type="email" required maxlength="200" autocomplete="email"></div></div>

@@ -1,12 +1,22 @@
 /* Creative Scaler – vizuální systém podle mairateam.com
    Písmo: PP Neue Corp Compact (jako web MAIRA). Soubory písma nejsou součástí repozitáře kvůli licenci –
    když je tým vloží do public/assets/fonts/, použijí se. Do té doby zastupuje Archivo v úzkém řezu.
+   Archivo (licence OFL, viz fonts/Archivo-OFL.txt) je přímo v repozitáři: načítání z Google Fonts
+   by posílalo IP adresy návštěvníků Googlu (GDPR, LG München I, 3 O 17493/20). Při změně souboru písma
+   změňte i jeho název, protože se v prohlížeči drží rok.
    Mřížka: okraj 64 px na desktopu, sekce střídají tmavě zelenou, oranžovou a bílou. */
 
 @font-face{font-family:"PP Neue Corp Compact";font-weight:400 600;font-style:normal;font-display:swap;
   src:local("PP Neue Corp Compact Medium"),local("PPNeueCorp-CompactMedium"),url("/assets/fonts/PPNeueCorp-CompactMedium.woff2") format("woff2")}
 @font-face{font-family:"PP Neue Corp Compact";font-weight:700 900;font-style:normal;font-display:swap;
   src:local("PP Neue Corp Compact Ultrabold"),local("PPNeueCorp-CompactUltrabold"),url("/assets/fonts/PPNeueCorp-CompactUltrabold.woff2") format("woff2")}
+/* Archivo, proměnné písmo (šířka 62–125 %, váha 400–900): latin-ext má českou a slovenskou diakritiku */
+@font-face{font-family:"Archivo";font-style:normal;font-weight:400 900;font-stretch:62% 125%;font-display:swap;
+  src:url("/assets/fonts/archivo-latin-ext.woff2") format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Archivo";font-style:normal;font-weight:400 900;font-stretch:62% 125%;font-display:swap;
+  src:url("/assets/fonts/archivo-latin.woff2") format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 
 :root{
   /* barvy MAIRA */
@@ -265,6 +275,7 @@ tr.first td{border-top:1px solid var(--line-strong)}
 @media (max-width:900px){.cta-grid{grid-template-columns:minmax(0,1fr)}}
 .cta-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 16px;margin-top:36px}
 .cta-form .full{grid-column:1/-1}
+.cta-link{margin-top:36px}
 @media (max-width:560px){.cta-form{grid-template-columns:minmax(0,1fr)}}
 .sent{margin:18px 0 0;font-size:18px;font-weight:700;color:var(--good)}
 .honey{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}

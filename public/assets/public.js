@@ -76,7 +76,14 @@
     render(last, renderOpts());
     afterRender();
   }
-  function renderOpts() { return { dailyHint: R => state.mode === 'day' ? t('hint_day', { a: money(R.S.spend) }) : t('hint_month', { a: money(R.S.spend / DPM) }) }; }
+  // poptávkový formulář jen tam, kde ho server přijme (features.leadForm); jinak tlačítka vedou na web MAIRA
+  const leadForm = () => !!(cfg && cfg.features && cfg.features.leadForm);
+  function renderOpts() {
+    return {
+      dailyHint: R => state.mode === 'day' ? t('hint_day', { a: money(R.S.spend) }) : t('hint_month', { a: money(R.S.spend / DPM) }),
+      ctaSubKey: leadForm() ? 'cta_sub' : 'cta_sub_link'
+    };
+  }
   function afterRender() {
     markPresets();
     if (state.convSource === 'cpa' && state.cpa > 0) $('conv').placeholder = '≈ ' + fmtIn(state.spend / state.cpa);
@@ -106,28 +113,33 @@
   document.querySelectorAll('#langSeg button').forEach(b => b.addEventListener('click', () => { setLang(b.dataset.lang); texts(); update(); }));
   $('f').addEventListener('submit', e => e.preventDefault());
 
-  // poptávka
-  $('ctaForm').addEventListener('submit', async e => {
-    e.preventDefault();
-    const msg = $('ctaMsg'), btn = $('ctaBtn');
-    const body = {
-      name: $('cName').value, company: $('cCompany').value, email: $('cEmail').value, website: $('cWeb').value, lang: getLang(),
-      calc: last ? { spend: last.S.spend, sit: last.sit, cpa: last.S.cpa, roas: last.S.roas, current: last.S.current, liveNow: last.S.liveNow, newAds: last.newAds, live: last.live, sets: last.sets, costAi: last.costAi, costClassic: last.costClassic, currency: getCurrency() } : {}
-    };
-    if (!body.name.trim() || !body.company.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email)) { msg.hidden = false; msg.style.color = 'var(--warn)'; msg.textContent = t('f_err'); return; }
-    btn.disabled = true;
-    try {
-      const r = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!r.ok) throw new Error();
-      $('ctaForm').hidden = true; msg.hidden = false; msg.style.color = ''; msg.textContent = t('f_sent');
-    } catch (err) { msg.hidden = false; msg.style.color = 'var(--warn)'; msg.textContent = t('f_err'); btn.disabled = false; }
-  });
+  // poptávka: formulář je v HTML skrytý, zapne se jen s features.leadForm
+  function enableLeadForm() {
+    $('ctaForm').hidden = false; $('ctaLinkBox').hidden = true;
+    const head = $('headCta'); head.href = '#cta'; head.removeAttribute('target'); head.removeAttribute('rel');
+    $('ctaForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const msg = $('ctaMsg'), btn = $('ctaBtn');
+      const body = {
+        name: $('cName').value, company: $('cCompany').value, email: $('cEmail').value, website: $('cWeb').value, lang: getLang(),
+        calc: last ? { spend: last.S.spend, sit: last.sit, cpa: last.S.cpa, roas: last.S.roas, current: last.S.current, liveNow: last.S.liveNow, newAds: last.newAds, live: last.live, sets: last.sets, costAi: last.costAi, costClassic: last.costClassic, currency: getCurrency() } : {}
+      };
+      if (!body.name.trim() || !body.company.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email)) { msg.hidden = false; msg.style.color = 'var(--warn)'; msg.textContent = t('f_err'); return; }
+      btn.disabled = true;
+      try {
+        const r = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!r.ok) throw new Error();
+        $('ctaForm').hidden = true; msg.hidden = false; msg.style.color = ''; msg.textContent = t('f_sent');
+      } catch (err) { msg.hidden = false; msg.style.color = 'var(--warn)'; msg.textContent = t('f_err'); btn.disabled = false; }
+    });
+  }
 
   // nastavení z adminu
   texts();
   fetch('/api/config').then(r => { if (r.status === 401) { location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search); throw new Error('auth'); } return r.json(); })
     .then(c => {
       cfg = c; setRates(c.rates); $('pricesBadge').hidden = !c.pricesAreDemo;
+      if (leadForm()) enableLeadForm();
       renderExamples(c.examples);
       showSpend(); showCpa(); update();
     })
