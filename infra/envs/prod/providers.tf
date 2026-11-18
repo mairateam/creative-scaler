@@ -14,3 +14,10 @@ provider "google-beta" {
   user_project_override = true
   billing_project       = var.project_id
 }
+
+# Jen pro zapnutí Service Usage API (apis.tf): dokud neběží, nejde volání účtovat na projekt.
+provider "google" {
+  alias   = "bootstrap"
+  project = var.project_id
+  region  = var.region
+}

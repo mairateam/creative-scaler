@@ -13,13 +13,34 @@ Všechno v GCP se zakládá a mění jen přes Terraform. `gcloud` jen na čten�
 
 Fáze 1 má jen prod projekt (rozhodnutí 5). Náhledy z PR jdou na preview channels ve stejném projektu.
 
+## Projekt z Tectury
+
+Prod projekt zakládá interní služba Tectura (project factory nad Cloud Foundation Fabric FAST).
+Ověřeno 18. 11. 2026 při prvním apply:
+
+- **Tectura spravuje** projekt, jeho štítky, fakturační účet (sdílený), roli Owner, service agenty a vlastní
+  sadu API (BigQuery, Vertex AI, Cloud Run a další). Výchozí síť `default` maže. Na nic z toho tento
+  Terraform nesahá.
+- **Tento Terraform spravuje** všechno z tabulky výše. Role přidává jen aditivně (na projektu, na bucketu
+  a na účtu), takže se s Tecturou nepřetahuje. Kdyby Tectura začala spravovat role na projektu
+  autoritativně, musí vynechat `roles/firebasehosting.admin` a audit logy `storage.googleapis.com`.
+  Jinak je při svém dalším apply smaže.
+- **Org policies** platné pro projekt nic z fáze 1 neblokují: WIF, lokace, CMEK i API jsou povolené.
+  Kontrola: `gcloud org-policies describe <constraint> --project=<PROJECT_ID> --effective`.
+- **Service Usage API** Tectura nezapíná. Zapíná ji `google_project_service.serviceusage` přes provider
+  `google.bootstrap` (viz [apis.tf](envs/prod/apis.tf)).
+- **Rozpočet:** fakturační účet je sdílený účet Tectury a vlastník projektu k němu přístup nemá. Alert
+  proto zakládá Tectura a `billing_account_id` v `terraform.tfvars` zůstává prázdné.
+- **Výchozí Hosting site** `<PROJECT_ID>.web.app` založil Firebase sám. Je prázdná a nepoužívá se.
+  Příkazy `firebase hosting:*` ji berou jako výchozí, proto u nich zadávejte `--site maira-creative-scaler`.
+
 ## Postup po založení projektu
 
-Potřebujete `gcloud`, Terraform 1.9 nebo novější, roli Owner na projektu a pro rozpočet roli
-Billing Account Costs Manager na fakturačním účtu. Příkazy jsou pro PowerShell z kořene repozitáře.
+Potřebujete `gcloud`, Terraform 1.9 nebo novější a roli Owner na projektu. Příkazy jsou pro PowerShell
+z kořene repozitáře.
 
-**1. Projekt** (žádost na správce GCP): jeden prod projekt, region `europe-west1`, napojený fakturační účet.
-Firebase zapínat nemusí, udělá to Terraform.
+**1. Projekt** (žádost na Tecturu): jeden prod projekt, region `europe-west1`. Firebase ani další API
+zapínat nemusí, udělá to Terraform.
 
 **2. Přihlášení**
 
@@ -47,6 +68,8 @@ terraform apply tfplan
 ```
 
 Možné chyby:
+- **„Service Usage API has not been used in project…“**: API se po zapnutí chvíli propisuje. Počkejte
+  dvě minuty a apply spusťte znovu.
 - **409 u `google_firebase_hosting_site`**: ID site už má někdo jiný. Zvolte jiné `hosting_site_id`
   v `terraform.tfvars` a stejné změňte v `"site"` ve [firebase.json](../firebase.json).
 - **409 u `google_firebase_project`**: Firebase už na projektu je. Importujte ho:
@@ -54,7 +77,15 @@ Možné chyby:
 - **403 u `google_firebase_project`**: účet ještě nepřijal podmínky Firebase. Otevřete jednou
   console.firebase.google.com, přijměte je a apply zopakujte.
 
-**6. Proměnné pro GitHub Actions** (nejsou tajné, proto Variables, ne Secrets):
+**6. Ochrana produkce na GitHubu** (Settings → Environments → New environment `production`).
+Založte ji dřív než proměnné v kroku 7: chybějící prostředí si workflow založí sám, a to bez schválení.
+- Required reviewers: aspoň jeden člověk z týmu.
+- Deployment branches: jen `main`.
+
+Repozitář je veřejný, proto ještě Settings → Actions → General → „Require approval for all outside
+collaborators“, aby workflow z cizích PR nespouštěl nikdo bez schválení.
+
+**7. Proměnné pro GitHub Actions** (nejsou tajné, proto Variables, ne Secrets):
 
 ```powershell
 $vars = terraform output -json github_variables | ConvertFrom-Json
@@ -62,13 +93,6 @@ $vars.PSObject.Properties | ForEach-Object { gh variable set $_.Name --body $_.V
 ```
 
 Workflow [deploy.yml](../.github/workflows/deploy.yml) se tím zapne. Do té doby se jeho joby přeskakují.
-
-**7. Ochrana produkce na GitHubu** (Settings → Environments → New environment `production`):
-- Required reviewers: aspoň jeden člověk z týmu.
-- Deployment branches: jen `main`.
-
-Repozitář je veřejný, proto ještě Settings → Actions → General → „Require approval for all outside
-collaborators“, aby workflow z cizích PR nespouštěl nikdo bez schválení.
 
 **8. Data z Railway** (export volume `/data`, viz TODO.md, sekce 2):
 
