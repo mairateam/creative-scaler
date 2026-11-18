@@ -9,7 +9,7 @@ terraform {
     # Firebase (projekt, Hosting site, vlastní doména) je zatím jen v google-beta.
     google-beta = {
       source  = "hashicorp/google-beta"
-      version = "8.9.0"
+      version = "8.11.0"
     }
   }
 }
