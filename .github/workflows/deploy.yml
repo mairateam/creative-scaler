@@ -81,7 +81,11 @@ jobs:
           PROJECT: ${{ vars.GCP_PROJECT_ID }}
           CHANNEL: pr-${{ github.event.pull_request.number }}
         run: |
-          npx firebase hosting:channel:deploy "$CHANNEL" --expires 7d --project "$PROJECT" --non-interactive --json > channel.json
+          # S --json jde i chyba do channel.json, proto ji při selhání vypíšeme.
+          if ! npx firebase hosting:channel:deploy "$CHANNEL" --expires 7d --project "$PROJECT" --non-interactive --json > channel.json; then
+            cat channel.json
+            exit 1
+          fi
           node -e '
             const out = JSON.parse(require("fs").readFileSync("channel.json", "utf8"));
             if (out.status !== "success") { console.error(JSON.stringify(out)); process.exit(1); }
