@@ -52,3 +52,11 @@ resource "google_project_iam_member" "hosting_deployer_hosting_admin" {
   role    = "roles/firebasehosting.admin"
   member  = "serviceAccount:${google_service_account.hosting_deployer.email}"
 }
+
+# firebase-tools před nasazením ověřuje, že je Hosting API zapnuté (serviceusage.services.get), a bez
+# toho skončí na 403. Role jen ke čtení; API zapínat nemůže.
+resource "google_project_iam_member" "hosting_deployer_serviceusage_viewer" {
+  project = var.project_id
+  role    = "roles/serviceusage.serviceUsageViewer"
+  member  = "serviceAccount:${google_service_account.hosting_deployer.email}"
+}

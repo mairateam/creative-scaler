@@ -7,7 +7,7 @@ Všechno v GCP se zakládá a mění jen přes Terraform. `gcloud` jen na čten�
 |---|---|
 | `envs/prod/apis.tf` | zapnutá API |
 | `envs/prod/firebase.tf` | Firebase na projektu, Hosting site `maira-creative-scaler`, doména `creativescaler.mairateam.com` |
-| `envs/prod/deploy_identity.tf` | Workload Identity Federation pro GitHub Actions a účet `hosting-deployer` jen s rolí Firebase Hosting Admin |
+| `envs/prod/deploy_identity.tf` | Workload Identity Federation pro GitHub Actions a účet `hosting-deployer` jen s rolemi Firebase Hosting Admin a Service Usage Viewer |
 | `envs/prod/storage.tf` | privátní bucket pro export poptávek (osobní údaje) a bucket s ukázkami pro build, audit logy čtení |
 | `envs/prod/budget.tf` | rozpočtový alert (jen s vyplněným fakturačním účtem) |
 
@@ -23,7 +23,8 @@ Ověřeno 18. 11. 2026 při prvním apply:
   Terraform nesahá.
 - **Tento Terraform spravuje** všechno z tabulky výše. Role přidává jen aditivně (na projektu, na bucketu
   a na účtu), takže se s Tecturou nepřetahuje. Kdyby Tectura začala spravovat role na projektu
-  autoritativně, musí vynechat `roles/firebasehosting.admin` a audit logy `storage.googleapis.com`.
+  autoritativně, musí vynechat `roles/firebasehosting.admin`, `roles/serviceusage.serviceUsageViewer`
+  a audit logy `storage.googleapis.com`.
   Jinak je při svém dalším apply smaže.
 - **Org policies** platné pro projekt nic z fáze 1 neblokují: WIF, lokace, CMEK i API jsou povolené.
   Kontrola: `gcloud org-policies describe <constraint> --project=<PROJECT_ID> --effective`.
@@ -124,5 +125,6 @@ Stav k 17. 11. 2026: `mairateam.com` nemá záznamy CAA (certifikát od Googlu n
 
 ## Když nasazení z CI selže na oprávnění
 
-Účet `hosting-deployer` má jen `roles/firebasehosting.admin`. Pokud první nasazení skončí na chybějícím
+Účet `hosting-deployer` má jen `roles/firebasehosting.admin` a `roles/serviceusage.serviceUsageViewer`
+(firebase-tools si před nasazením ověřuje, že je Hosting API zapnuté). Pokud nasazení skončí na chybějícím
 oprávnění, doplňte roli v `deploy_identity.tf` a pošlete ji přes PR. Ručně v konzoli nic nepřidávejte.
