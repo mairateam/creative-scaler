@@ -42,11 +42,34 @@ Admin heslo otevře i veřejnou část. Změna hesla automaticky odhlásí všec
 
 **Poptávky do Slacku (nepovinné):** ve Slacku vytvořte Incoming Webhook do zvoleného kanálu a jeho adresu vložte do proměnné `SLACK_WEBHOOK_URL`. Každá nová poptávka pak přijde i tam.
 
+## Nasazení na GCP (fáze 1, připravuje se)
+
+Veřejná kalkulačka se stěhuje na Firebase Hosting jako statická stránka: bez serveru, adminu a poptávkového formuláře. Tlačítka „Chci kreativy“ vedou na web MAIRA. Plán a rozhodnutí jsou v `TODO.md`, infrastruktura v [infra/README.md](infra/README.md). Dokud neproběhne přepnutí, běží dál Railway.
+
+**Nastavení** (ceník, pravidla, ukázky) je v souboru [config/site.json](config/site.json). Změna = PR, po schválení se nasadí. Soubor je veřejný (repozitář i web), proto smí obsahovat jen veřejné hodnoty. Build jiné klíče odmítne a zkontroluje rozsahy stejně jako admin.
+
+**Ukázky** (videa a obrázky) do gitu nepatří. Leží v privátním bucketu `<projekt>-build-media` ve složce `media/`. V `site.json` se na ně odkazuje jako `/media/<soubor>`, stejně jako na Railway. Při nasazení je CI stáhne a build zkopíruje jen ty, na které nastavení odkazuje.
+
+```bash
+npm run build:static     # statická stránka do dist/
+npm run check:static     # selže, když by na web šlo něco interního
+npm test                 # testy výřezu nastavení, buildu a hlaviček z firebase.json
+npm run preview:static   # build + Firebase Hosting emulator na http://127.0.0.1:5050
+```
+
+Emulátor na Windows neposílá hlavičky z `firebase.json` (CSP, cache, noindex). Je to chyba v nástroji, ne v nastavení; na Linuxu a ve Firebase fungují a hlídá je `npm test`.
+
+**Nasazení** dělá GitHub Actions ([.github/workflows/deploy.yml](.github/workflows/deploy.yml)):
+- PR → náhled na preview channel (platí 7 dní), adresa je v souhrnu běhu.
+- `main` → produkce po schválení v prostředí `production`.
+
+Hlavičky (CSP, HSTS, `noindex`, cache) jsou ve [firebase.json](firebase.json). `/api/config` se přepisuje na `/config.json`, takže `public.js` načítá nastavení ze stejné adresy jako na Railway.
+
 ## Písmo
 
-Web MAIRA používá písmo **PP Neue Corp Compact**. Soubory písma nejsou v repozitáři, protože jde o placené písmo a jeho licenci spravuje MAIRA. Do té doby se zobrazuje velmi podobné **Archivo** (Google Fonts) ve zúženém řezu.
+Web MAIRA používá písmo **PP Neue Corp Compact**. Soubory písma nejsou v repozitáři, protože jde o placené písmo a jeho licenci spravuje MAIRA. Do té doby se zobrazuje velmi podobné **Archivo** ve zúženém řezu. Archivo je přímo v `public/assets/fonts/` (licence OFL), ne z Google Fonts: načítání od Googlu by posílalo IP adresy návštěvníků do USA.
 
-Až MAIRA písmo dodá a licence to dovolí, stačí nahrát tyto dva soubory do `public/assets/fonts/`:
+Až MAIRA písmo dodá a licence to dovolí, stačí nahrát tyto dva soubory do `public/assets/fonts/`. Repozitář je veřejný, takže placené písmo do gitu nepatří; musí se do buildu dostat jinak (např. jako ukázky z bucketu).
 
 - `PPNeueCorp-CompactMedium.woff2`
 - `PPNeueCorp-CompactUltrabold.woff2`
@@ -93,7 +116,13 @@ Všechny kotvy, násobky, minimum živých reklam, únava i ceník jdou změnit 
 ```
 server.js              server, přihlášení, API
 store.js               ukládání nastavení a poptávek (JSON v DATA_DIR)
+lib/config.js          výchozí nastavení, kontrola hodnot, veřejný výřez (server i statický build)
 views/                 stránky: veřejná, admin, přihlášení
-public/assets/         veřejné soubory: styly, sdílený výpočet (core.js), veřejná logika
+public/assets/         veřejné soubory: styly, písmo, sdílený výpočet (core.js), veřejná logika
 private/admin.js       logika adminu, posílá se jen přihlášenému adminovi
+config/site.json       nastavení statické stránky na Firebase Hosting (jen veřejné hodnoty)
+scripts/               statický build, kontrola buildu, bucket pro stav Terraformu
+firebase.json          Firebase Hosting: hlavičky, cache, přepis /api/config
+infra/                 Terraform pro GCP (fáze 1)
+.github/workflows/     CI a nasazení
 ```

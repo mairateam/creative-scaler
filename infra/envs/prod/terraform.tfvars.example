@@ -1,0 +1,13 @@
+# Zkopírujte do terraform.tfvars (je v .gitignore) a doplňte. Repozitář je veřejný: e-maily ani ID
+# fakturačního účtu do gitu nepatří.
+project_id = "<PROJECT_ID>"
+
+# Nepovinné (výchozí hodnoty jsou ve variables.tf):
+# region          = "europe-west1"
+# hosting_site_id = "maira-creative-scaler"   # musí sedět s "site" ve firebase.json
+# custom_domain   = "creativescaler.mairateam.com"
+
+# Rozpočtový alert. Bez billing_account_id se nevytvoří.
+# billing_account_id    = "XXXXXX-XXXXXX-XXXXXX"
+# budget_monthly_amount = 20
+# budget_alert_email    = "someone@example.com"

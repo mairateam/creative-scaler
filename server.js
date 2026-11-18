@@ -4,6 +4,7 @@ const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
 const store = require('./store');
+const { normalizeConfig, publicConfig, clip } = require('./lib/config');
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
@@ -149,18 +150,9 @@ app.get(['/READ_ME', '/read_me', '/readme', '/READ-ME'], requireAdmin, (req, res
 app.get('/admin/admin.js', requireAdmin, (req, res) => res.sendFile(path.join(PRIVATE, 'admin.js')));
 
 /* ---------- nastavení ---------- */
-app.get('/api/config', requirePublic, (req, res) => {
-  const c = store.getConfig();
-  // veřejnosti posíláme jen to, co výpočet potřebuje
-  res.json({
-    testPct: c.testPct, testDays: c.testDays, videosPerSet: c.videosPerSet, staticsPerSet: c.staticsPerSet,
-    winnersPerSet: c.winnersPerSet, winnerLifeWeeks: c.winnerLifeWeeks,
-    fatigueWeeklyPct: c.fatigueWeeklyPct, fatigueStartWeek: c.fatigueStartWeek, refreshEffPct: c.refreshEffPct, rates: c.rates,
-    rules: c.rules, situations: c.situations, examples: c.examples,
-    // klasickou produkci veřejnosti neposíláme, srovnání se ve veřejné části neukazuje
-    prices: { aiVideo: c.prices.aiVideo, aiStatic: c.prices.aiStatic }, pricesAreDemo: c.pricesAreDemo
-  });
-});
+// veřejnosti posíláme jen to, co výpočet potřebuje; výřez sdílí se statickým buildem.
+// Server poptávky přijímá (/api/leads), proto tu formulář zůstává zapnutý.
+app.get('/api/config', requirePublic, (req, res) => res.json(publicConfig(store.getConfig(), { leadForm: true })));
 /* ---------- ukázky: nahrání souboru do DATA_DIR/media ---------- */
 const MEDIA_TYPES = { 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
 app.use('/media', requirePublic, express.static(store.MEDIA_DIR, { maxAge: '7d', fallthrough: false }));
@@ -174,67 +166,9 @@ app.post('/api/admin/media', requireAdmin, express.raw({ type: Object.keys(MEDIA
 
 app.get('/api/admin/config', requireAdmin, (req, res) => res.json(store.getConfig()));
 
-const clip = (s, n) => String(s || '').trim().slice(0, n);
-const inRange = (v, lo, hi) => typeof v === 'number' && isFinite(v) && v >= lo && v <= hi;
 app.put('/api/admin/config', requireAdmin, (req, res) => {
-  const b = req.body || {};
-  const cur = store.getConfig();
-  const errors = [];
-  const pick = (key, lo, hi) => { if (b[key] === undefined) return cur[key]; if (!inRange(b[key], lo, hi)) errors.push(key); return b[key]; };
-  const next = {
-    testPct: pick('testPct', 1, 100),
-    testDays: pick('testDays', 1, 60),
-    videosPerSet: pick('videosPerSet', 0, 20),
-    staticsPerSet: pick('staticsPerSet', 0, 20),
-    winnersPerSet: pick('winnersPerSet', 0, 20),
-    winnerLifeWeeks: pick('winnerLifeWeeks', 0, 52),
-    maxSetsPerMonth: pick('maxSetsPerMonth', 1, 200),
-    fatigueWeeklyPct: pick('fatigueWeeklyPct', 0, 50),
-    fatigueStartWeek: pick('fatigueStartWeek', 1, 12),
-    refreshEffPct: pick('refreshEffPct', 0, 100),
-    rules: { ...cur.rules },
-    situations: { ...cur.situations },
-    examples: cur.examples,
-    rates: { ...cur.rates },
-    markets: { ...cur.markets },
-    prices: { ...cur.prices },
-    pricesAreDemo: typeof b.pricesAreDemo === 'boolean' ? b.pricesAreDemo : cur.pricesAreDemo
-  };
-  if (b.markets) for (const [k, v] of Object.entries(b.markets)) {
-    if (!/^[a-z]{2}$/.test(k) || !v || !inRange(v.daily, 100, 1e7)) { errors.push('markets.' + k); continue; }
-    next.markets[k] = { daily: v.daily, verified: !!v.verified };
-  }
-  if (b.prices) for (const k of ['aiVideo', 'classicVideo', 'aiStatic', 'classicStatic']) {
-    if (b.prices[k] === undefined) continue;
-    if (!inRange(b.prices[k], 0, 1e7)) errors.push('prices.' + k); else next.prices[k] = b.prices[k];
-  }
-  if (b.rates) for (const k of ['EUR', 'USD']) {
-    if (b.rates[k] === undefined) continue;
-    if (!inRange(b.rates[k], 0.01, 1000)) errors.push('rates.' + k); else next.rates[k] = b.rates[k];
-  }
-  const RULES = { lowSpend: [0, 1e9], lowN: [1, 1000], highSpend: [1, 1e9], highN: [1, 5000], step: [1, 50], smallSpend: [0, 1e9], tinySpend: [0, 1e9], minLive: [0, 500], under20: [0, 1e9], costWarnPct: [1, 1000], lowConv: [0, 1000] };
-  if (b.rules) for (const [k, [lo, hi]] of Object.entries(RULES)) {
-    if (b.rules[k] === undefined) continue;
-    if (!inRange(b.rules[k], lo, hi)) errors.push('rules.' + k); else next.rules[k] = b.rules[k];
-  }
-  if (next.rules.highSpend <= next.rules.lowSpend) errors.push('rules.highSpend');
-  if (next.rules.highN < next.rules.lowN) errors.push('rules.highN');
-  if (b.situations) for (const k of ['growth', 'launch']) {
-    if (b.situations[k] === undefined) continue;
-    if (!inRange(b.situations[k], 0.1, 10)) errors.push('situations.' + k); else next.situations[k] = b.situations[k];
-  }
-  if (b.examples !== undefined) {
-    if (!Array.isArray(b.examples) || b.examples.length > 30) errors.push('examples');
-    else {
-      const okUrl = u => typeof u === 'string' && (/^https:\/\/[^\s"'<>]+$/.test(u) || /^\/media\/[a-f0-9-]+\.[a-z0-9]+$/.test(u));
-      next.examples = b.examples.map(x => ({
-        title: clip(x && x.title, 80), client: clip(x && x.client, 80), result: clip(x && x.result, 120),
-        src: okUrl(x && x.src) ? x.src : '', poster: okUrl(x && x.poster) ? x.poster : '',
-        kind: x && (x.kind === 'image' || (x.kind !== 'video' && /\.(jpe?g|png|webp|gif)(\?|$)/i.test(x.src || ''))) ? 'image' : 'video', ratio: ['1:1', '9:16', '4:5', '16:9'].includes(x && x.ratio) ? x.ratio : '9:16'
-      })).filter(x => x.src);
-    }
-  }
-  if (next.videosPerSet + next.staticsPerSet < 1) errors.push('perSet');
+  // kontrola hodnot je v lib/config.js, aby ji mohl použít i statický build
+  const { config: next, errors } = normalizeConfig(req.body, store.getConfig());
   if (errors.length) return res.status(400).json({ error: 'Neplatné hodnoty', fields: errors });
   res.json(store.saveConfig(next));
 });

@@ -55,6 +55,7 @@ window.CS = (function () {
       plan_sub: 'Každý blok je jedna testovací sada. Nové sady se spouští průběžně, aby účet nikdy nezůstal bez čerstvých kreativ.',
       cta_eyebrow: 'Další krok', cta_h: 'Připravíme vám je',
       cta_sub: '{n} kreativ měsíčně vyrobíme s AI rychle a v kvalitě, jakou vidíte v ukázkách. Nechte nám kontakt a ozveme se s návrhem.',
+      cta_sub_link: '{n} kreativ měsíčně vyrobíme s AI rychle a v kvalitě, jakou vidíte v ukázkách. Ozvěte se nám a připravíme vám návrh.',
       f_name: 'Jméno', f_company: 'Firma', f_email: 'E-mail', f_send: 'Chci kreativy',
       f_sent: 'Díky, máme to. Ozveme se vám s návrhem.', f_err: 'Odeslání se nepovedlo. Zkontrolujte údaje a zkuste to znovu.',
       m_cz: 'Česko', m_sk: 'Slovensko', m_pl: 'Polsko', m_hu: 'Maďarsko', m_de: 'Německo', m_at: 'Rakousko',
@@ -125,6 +126,7 @@ window.CS = (function () {
       plan_sub: 'Každý blok je jedna testovacia sada. Nové sady sa spúšťajú priebežne, aby účet nikdy nezostal bez čerstvých kreatív.',
       cta_eyebrow: 'Ďalší krok', cta_h: 'Pripravíme vám ich',
       cta_sub: '{n} kreatív mesačne vyrobíme s AI rýchlo a v kvalite, akú vidíte v ukážkach. Nechajte nám kontakt a ozveme sa s návrhom.',
+      cta_sub_link: '{n} kreatív mesačne vyrobíme s AI rýchlo a v kvalite, akú vidíte v ukážkach. Ozvite sa nám a pripravíme vám návrh.',
       f_name: 'Meno', f_company: 'Firma', f_email: 'E-mail', f_send: 'Chcem kreatívy',
       f_sent: 'Vďaka, máme to. Ozveme sa vám s návrhom.', f_err: 'Odoslanie sa nepodarilo. Skontrolujte údaje a skúste to znova.',
       m_cz: 'Česko', m_sk: 'Slovensko', m_pl: 'Poľsko', m_hu: 'Maďarsko', m_de: 'Nemecko', m_at: 'Rakúsko',
@@ -195,6 +197,7 @@ window.CS = (function () {
       plan_sub: 'Each block is one test set. New sets launch continuously so the account never runs out of fresh creatives.',
       cta_eyebrow: 'Next step', cta_h: 'We will make them for you',
       cta_sub: 'We produce {n} creatives a month with AI, quickly and at the quality you see in the examples. Leave your contact and we will get back with a proposal.',
+      cta_sub_link: 'We produce {n} creatives a month with AI, quickly and at the quality you see in the examples. Get in touch and we will prepare a proposal.',
       f_name: 'Name', f_company: 'Company', f_email: 'Email', f_send: 'I want creatives',
       f_sent: 'Thanks, got it. We will get back to you with a proposal.', f_err: 'Sending failed. Check the details and try again.',
       m_cz: 'Czechia', m_sk: 'Slovakia', m_pl: 'Poland', m_hu: 'Hungary', m_de: 'Germany', m_at: 'Austria',
@@ -464,7 +467,8 @@ window.CS = (function () {
     const ae = $('alerts'); if (ae) ae.innerHTML = al.map(([c, x]) => `<div class="alert ${c}">${esc(x)}</div>`).join('');
 
     renderCost(R); renderChart(R); renderPlan(R);
-    set('ctaSub', t('cta_sub', { n: fmt(R.newAds) + (R.individual ? '+' : '') }));
+    // opts.ctaSubKey: veřejná část bez formuláře použije text bez „nechte nám kontakt“
+    set('ctaSub', t(opts.ctaSubKey || 'cta_sub', { n: fmt(R.newAds) + (R.individual ? '+' : '') }));
   }
 
   // ukázky AI kreativ (spravují se v adminu); prázdný seznam = sekce se skryje

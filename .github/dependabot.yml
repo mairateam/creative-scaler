@@ -1,0 +1,23 @@
+# Akce jsou připnuté na SHA; Dependabot je udržuje aktuální. Stejně tak npm a Terraform providery.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: terraform
+    directory: /infra/envs/prod
+    schedule:
+      interval: weekly

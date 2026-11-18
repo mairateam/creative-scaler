@@ -1,0 +1,153 @@
+# Nasazení statické kalkulačky na Firebase Hosting (fáze 1).
+#   PR  → náhled na preview channel (pr-<číslo>, vyprší za 7 dní), adresa je v souhrnu běhu
+#   main → produkce, až po schválení v prostředí „production“
+#
+# Dokud v repozitáři není proměnná GCP_PROJECT_ID (projekt ještě není založený), oba joby se přeskočí.
+# Přihlášení přes Workload Identity Federation, žádný JSON klíč (infra/envs/prod/deploy_identity.tf).
+# Proměnné repozitáře: GCP_PROJECT_ID, GCP_WIF_PROVIDER, GCP_DEPLOY_SA, BUILD_MEDIA_BUCKET (viz infra/README.md).
+name: Nasazení
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  preview:
+    name: Náhled
+    # PR z forku ani od Dependabota OIDC token nedostane, proto je přeskočíme místo červeného běhu.
+    if: >-
+      github.event_name == 'pull_request'
+      && vars.GCP_PROJECT_ID != ''
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalace
+        run: npm ci --no-audit --no-fund
+
+      - name: Testy
+        run: npm test
+
+      - name: Přihlášení do Google Cloud (WIF)
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - name: gcloud
+        if: vars.BUILD_MEDIA_BUCKET != ''
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      # Chybějící ukázku, na kterou odkazuje config/site.json, zachytí build.
+      - name: Ukázky z bucketu
+        if: vars.BUILD_MEDIA_BUCKET != ''
+        env:
+          BUCKET: ${{ vars.BUILD_MEDIA_BUCKET }}
+        run: |
+          mkdir -p media
+          gcloud storage rsync "gs://${BUCKET}/media" media || echo "::warning::Ukázky se nepodařilo stáhnout z gs://${BUCKET}/media"
+
+      - name: Statický build
+        run: npm run build:static
+
+      - name: Nic interního na webu
+        run: npm run check:static
+
+      - name: Nasazení na preview channel
+        env:
+          PROJECT: ${{ vars.GCP_PROJECT_ID }}
+          CHANNEL: pr-${{ github.event.pull_request.number }}
+        run: |
+          # S --json jde i chyba do channel.json, proto ji při selhání vypíšeme.
+          if ! npx firebase hosting:channel:deploy "$CHANNEL" --expires 7d --project "$PROJECT" --non-interactive --json > channel.json; then
+            cat channel.json
+            exit 1
+          fi
+          node -e '
+            const out = JSON.parse(require("fs").readFileSync("channel.json", "utf8"));
+            if (out.status !== "success") { console.error(JSON.stringify(out)); process.exit(1); }
+            const lines = Object.values(out.result || {}).map(s => `- ${s.url} (vyprší ${s.expireTime})`);
+            console.log("### Náhled\n" + lines.join("\n"));
+          ' >> "$GITHUB_STEP_SUMMARY"
+          cat "$GITHUB_STEP_SUMMARY"
+
+  live:
+    name: Produkce
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && github.ref == 'refs/heads/main'
+      && vars.GCP_PROJECT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Prostředí s povinným schválením a omezením na větev main (Settings → Environments).
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalace
+        run: npm ci --no-audit --no-fund
+
+      - name: Testy
+        run: npm test
+
+      - name: Přihlášení do Google Cloud (WIF)
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - name: gcloud
+        if: vars.BUILD_MEDIA_BUCKET != ''
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Ukázky z bucketu
+        if: vars.BUILD_MEDIA_BUCKET != ''
+        env:
+          BUCKET: ${{ vars.BUILD_MEDIA_BUCKET }}
+        run: |
+          mkdir -p media
+          gcloud storage rsync "gs://${BUCKET}/media" media || echo "::warning::Ukázky se nepodařilo stáhnout z gs://${BUCKET}/media"
+
+      - name: Statický build
+        run: npm run build:static
+
+      - name: Nic interního na webu
+        run: npm run check:static
+
+      - name: Nasazení do produkce
+        env:
+          PROJECT: ${{ vars.GCP_PROJECT_ID }}
+        run: npx firebase deploy --only hosting --project "$PROJECT" --non-interactive --message "$GITHUB_SHA"

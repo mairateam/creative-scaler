@@ -1,0 +1,38 @@
+{
+  "testPct": 30,
+  "testDays": 6,
+  "videosPerSet": 3,
+  "staticsPerSet": 2,
+  "winnersPerSet": 1,
+  "winnerLifeWeeks": 4,
+  "fatigueWeeklyPct": 7,
+  "fatigueStartWeek": 3,
+  "refreshEffPct": 70,
+  "rates": {
+    "EUR": 24.35,
+    "USD": 21.36
+  },
+  "rules": {
+    "lowSpend": 100000,
+    "lowN": 10,
+    "highSpend": 1000000,
+    "highN": 50,
+    "step": 5,
+    "smallSpend": 100000,
+    "tinySpend": 50000,
+    "minLive": 6,
+    "under20": 20000,
+    "costWarnPct": 35,
+    "lowConv": 10
+  },
+  "situations": {
+    "growth": 1.5,
+    "launch": 2
+  },
+  "examples": [],
+  "prices": {
+    "aiVideo": 3500,
+    "aiStatic": 900
+  },
+  "pricesAreDemo": true
+}
