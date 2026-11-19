@@ -19,6 +19,6 @@
     "express": "^4.21.2"
   },
   "devDependencies": {
-    "firebase-tools": "15.34.2"
+    "firebase-tools": "15.36.0"
   }
 }
