@@ -86,10 +86,10 @@
         <span class="eyebrow-lg">Začněte tady</span>
         <h2>Dva odkazy</h2>
         <div class="links">
-          <a href="/"><span class="k">Pro klienta</span><span class="u">creative-scaler-production.up.railway.app</span><span class="d">Veřejná kalkulačka. Tu ukazujeme nebo posíláme klientovi.</span></a>
+          <a href="https://creativescaler.mairateam.com/"><span class="k">Pro klienta</span><span class="u">creativescaler.mairateam.com</span><span class="d">Veřejná kalkulačka. Tu ukazujeme nebo posíláme klientovi.</span></a>
           <a href="/admin"><span class="k">Pro tým</span><span class="u">… /admin</span><span class="d">Interní část: celý výpočet, nastavení, zadání do výroby a poptávky.</span></a>
         </div>
-        <p class="muted">Obě části jsou teď kvůli demu bez hesla. Kdo zná adresu /admin, vidí i poptávky s kontakty a může měnit nastavení. Heslo se zapne jedním přepínačem v Railway (viz Technika).</p>
+        <p class="muted">Na webu je zatím jen veřejná kalkulačka, bez poptávkového formuláře. Admin běží jen v lokální verzi; na web přijde v další fázi. Do té doby se ceník, pravidla a ukázky mění v GitHubu (viz Technika).</p>
       </section>
 
       <section id="proc">
@@ -195,10 +195,10 @@
         <h2>Technika</h2>
         <ul>
           <li><b>Kód</b> je na GitHubu v repozitáři <code>mairateam/creative-scaler</code>. Podrobný technický návod je v souboru README.md.</li>
-          <li><b>Běží na Railway</b> v projektu creative-scaler. Každá změna v GitHubu se sama nasadí zhruba do minuty.</li>
-          <li><b>Nastavení a poptávky</b> se ukládají na úložiště Railway, takže přežijí i nové nasazení.</li>
-          <li><b>Přístup</b> řídí proměnné v Railway: <code>ADMIN_OPEN=true</code> a <code>PUBLIC_OPEN=true</code> (teď bez hesla). Smazáním proměnné se zapne heslo z <code>ADMIN_PASSWORD</code> nebo <code>PUBLIC_PASSWORD</code>.</li>
-          <li><b>Vlastní adresa</b> <code>creativescaler.mairateam.com</code>: v Railway přidat doménu a správce DNS přidá jeden záznam CNAME.</li>
+          <li><b>Běží na Firebase Hosting</b> v Google Cloud jako statická stránka. Změna se nasadí po sloučení PR do větve <code>main</code> a schválení nasazení.</li>
+          <li><b>Nastavení</b> (ceník, pravidla, ukázky) je v souboru <code>config/site.json</code>; změna = PR. Videa a obrázky ukázek leží v privátním bucketu, ne v GitHubu.</li>
+          <li><b>Poptávkový formulář</b> je na webu vypnutý, tlačítka „Chci kreativy“ vedou na mairateam.com.</li>
+          <li><b>Vlastní adresa</b> <code>creativescaler.mairateam.com</code> míří přes DNS na Cloudflare na Firebase Hosting.</li>
         </ul>
       </section>
     </main>

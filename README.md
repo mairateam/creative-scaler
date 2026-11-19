@@ -1,8 +1,10 @@
 # Creative Scaler
 
-Kalkulačka, která klientovi ukáže, kolik kreativ na Meta Ads opravdu potřebuje, kolik to bude stát a co se stane bez nových kreativ. Na konci je formulář „Chci kreativy“.
+Kalkulačka, která klientovi ukáže, kolik kreativ na Meta Ads opravdu potřebuje, kolik to bude stát a co se stane bez nových kreativ. Na konci je výzva „Chci kreativy“.
 
-Aplikace má dvě části:
+**Na webu** běží veřejná kalkulačka jako statická stránka na Firebase Hosting: https://creativescaler.mairateam.com (viz [Nasazení](#nasazení-firebase-hosting)). Admin ani poptávkový formulář tam nejsou; tlačítka „Chci kreativy“ vedou na web MAIRA.
+
+**Express aplikace** v tomto repozitáři má i admin a formulář. Zatím běží jen lokálně, nasadit se má ve fázi 2. Má dvě části:
 
 | Část | Adresa | Pro koho | Co tam je |
 |---|---|---|---|
@@ -13,7 +15,7 @@ Návod pro kolegy (bez technických detailů) je přímo v aplikaci na adrese **
 
 Co se v adminu uloží v Nastavení, veřejná část hned přebere. Interní věci (předpoklady, zadání do výroby, demo účty, poptávky) do veřejné části vůbec nechodí, ani ve zdrojovém kódu stránky.
 
-## Hesla
+## Hesla a proměnné (Express aplikace)
 
 - `ADMIN_PASSWORD` – vstup do adminu.
 - `PUBLIC_PASSWORD` – vstup do veřejné části. Dokud je nastavené, klient potřebuje heslo.
@@ -23,32 +25,20 @@ Když chybí heslo i `PUBLIC_OPEN`, veřejná část zůstane zavřená a pustí
 
 - `ADMIN_OPEN` – nastavte `true`, aby admin fungoval bez hesla (jen pro demo). Pozor: kdo zná adresu `/admin`, uvidí poptávky i s kontakty a může měnit nastavení.
 
-**Demo teď běží bez hesel:** `PUBLIC_OPEN=true` a `ADMIN_OPEN=true`.
-
 Admin heslo otevře i veřejnou část. Změna hesla automaticky odhlásí všechny, kdo byli přihlášení starým heslem.
 
-## Nasazení na Railway
+- `DATA_DIR` – složka, kam aplikace ukládá nastavení, poptávky a nahrané ukázky.
+- `SLACK_WEBHOOK_URL` – nepovinné: adresa Incoming Webhooku ze Slacku. Každá nová poptávka pak přijde i do zvoleného kanálu.
 
-1. V Railway klikněte **New Project → Deploy from GitHub repo** a vyberte `creative-scaler`.
-2. V záložce **Variables** přidejte (klíč pro přihlášení si aplikace vygeneruje sama a uloží na volume):
-   - `ADMIN_PASSWORD` – heslo pro tým
-   - `PUBLIC_PASSWORD` – heslo na prezentaci
-   - `DATA_DIR` = `/data`
-3. Přidejte **Volume** (pravým tlačítkem na službu → Attach Volume) s cestou `/data`. Tam se ukládá nastavení a poptávky. Bez volume by se po každém nasazení smazaly.
-4. V **Settings → Networking** klikněte na **Generate Domain**. Dostanete adresu typu `creative-scaler-production.up.railway.app`.
-5. Hotovo. Každý push do větve `main` se nasadí sám.
+## Nasazení (Firebase Hosting)
 
-**Vlastní doména `creativescaler.mairateam.com`:** v Settings → Networking → Custom Domain zadejte doménu a Railway vypíše záznam CNAME, který musí správce DNS pro mairateam.com přidat.
+Veřejná kalkulačka běží jako statická stránka na Firebase Hosting v prod projektu na GCP: bez serveru, adminu a poptávkového formuláře. Adresy jsou https://creativescaler.mairateam.com a https://maira-creative-scaler.web.app. Stránka má zatím `noindex`. Infrastruktura a postup jsou v [infra/README.md](infra/README.md).
 
-**Poptávky do Slacku (nepovinné):** ve Slacku vytvořte Incoming Webhook do zvoleného kanálu a jeho adresu vložte do proměnné `SLACK_WEBHOOK_URL`. Každá nová poptávka pak přijde i tam.
-
-## Nasazení na GCP (fáze 1, připravuje se)
-
-Veřejná kalkulačka se stěhuje na Firebase Hosting jako statická stránka: bez serveru, adminu a poptávkového formuláře. Tlačítka „Chci kreativy“ vedou na web MAIRA. Plán a rozhodnutí jsou v `TODO.md`, infrastruktura v [infra/README.md](infra/README.md). Dokud neproběhne přepnutí, běží dál Railway.
+Dřívější nasazení Express aplikace na Railway je od 18. 11. 2026 vypnuté.
 
 **Nastavení** (ceník, pravidla, ukázky) je v souboru [config/site.json](config/site.json). Změna = PR, po schválení se nasadí. Soubor je veřejný (repozitář i web), proto smí obsahovat jen veřejné hodnoty. Build jiné klíče odmítne a zkontroluje rozsahy stejně jako admin.
 
-**Ukázky** (videa a obrázky) do gitu nepatří. Leží v privátním bucketu `<projekt>-build-media` ve složce `media/`. V `site.json` se na ně odkazuje jako `/media/<soubor>`, stejně jako na Railway. Při nasazení je CI stáhne a build zkopíruje jen ty, na které nastavení odkazuje.
+**Ukázky** (videa a obrázky) do gitu nepatří. Leží v privátním bucketu `<projekt>-build-media` ve složce `media/`. V `site.json` se na ně odkazuje jako `/media/<soubor>`, stejně jako v Express aplikaci. Při nasazení je CI stáhne a build zkopíruje jen ty, na které nastavení odkazuje.
 
 ```bash
 npm run build:static     # statická stránka do dist/
@@ -63,7 +53,7 @@ Emulátor na Windows neposílá hlavičky z `firebase.json` (CSP, cache, noindex
 - PR → náhled na preview channel (platí 7 dní), adresa je v souhrnu běhu.
 - `main` → produkce po schválení v prostředí `production`.
 
-Hlavičky (CSP, HSTS, `noindex`, cache) jsou ve [firebase.json](firebase.json). `/api/config` se přepisuje na `/config.json`, takže `public.js` načítá nastavení ze stejné adresy jako na Railway.
+Hlavičky (CSP, HSTS, `noindex`, cache) jsou ve [firebase.json](firebase.json). `/api/config` se přepisuje na `/config.json`, takže `public.js` načítá nastavení ze stejné adresy jako z Express serveru.
 
 ## Písmo
 
@@ -89,8 +79,8 @@ Otevřete http://localhost:3000 (heslo `demo`) a http://localhost:3000/admin (he
 
 - **Demo účty** v adminu jsou vymyšlené. Další krok je načítat spend, CPA, ROAS a počet reklam přímo z Meta účtu klienta.
 - **Graf únavy kreativ** je ilustrační křivka (bez obměny +7 % týdně od 3. týdne). Nahradit daty z účtů MAIRA.
-- **Ceník** je ukázkový. Přepište ho v Nastavení a vypněte volbu „Ceny jsou orientační“.
-- **Ukázky AI kreativ** zatím chybí. Nahrajte je v Nastavení.
+- **Ceník** je ukázkový. Na webu se mění v `config/site.json` (`prices` a `pricesAreDemo` na `false`), v Express aplikaci v adminu v Nastavení (volba „Ceny jsou orientační“).
+- **Ukázky AI kreativ** zatím chybí. Na web se nahrávají do bucketu a odkazují v `config/site.json` (viz Nasazení), v Express aplikaci v adminu v Nastavení.
 
 ## Jak výpočet funguje (verze 0.5)
 
@@ -107,9 +97,9 @@ Podle zpětné vazby týmu (Šimon, Kuba, Filip – Asana, říjen 2026):
 8b. **Rozpočet na kreativu** = 30 % spendu ÷ počet nových kreativ (jen informace).
 8c. **Tipy místo varování:** rozpočet pod 20 tis. Kč, pod 50 tis. Kč pomalejší rytmus, nad 50 kreativ individuálně, výroba nad 35 % rozpočtu.
 9. Veřejná část ukazuje jen cenu AI produkce. Srovnání s klasickou produkcí je jen v adminu.
-10. **Ukázky AI kreativ** se nahrávají v adminu v Nastavení (soubory jdou na volume do `DATA_DIR/media`). Bez ukázek se sekce neukazuje.
+10. **Ukázky AI kreativ** bere web z bucketu podle `config/site.json`; v Express aplikaci se nahrávají v adminu v Nastavení (do `DATA_DIR/media`). Bez ukázek se sekce neukazuje.
 
-Všechny kotvy, násobky, minimum živých reklam, únava i ceník jdou změnit v adminu v Nastavení.
+Všechny kotvy, násobky, minimum živých reklam, únava i ceník jdou změnit v `config/site.json` (web) nebo v adminu v Nastavení (Express aplikace).
 
 ## Struktura
 

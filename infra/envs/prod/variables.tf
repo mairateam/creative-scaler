@@ -1,5 +1,5 @@
 variable "project_id" {
-  description = "ID prod projektu v GCP (fáze 1 má jen prod, viz rozhodnutí 5 v TODO.md)."
+  description = "ID prod projektu v GCP (fáze 1 má záměrně jen prod, viz infra/README.md)."
   type        = string
 }
 

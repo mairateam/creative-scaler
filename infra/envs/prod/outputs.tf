@@ -15,7 +15,7 @@ output "hosting_url" {
 }
 
 output "leads_export_bucket" {
-  description = "Privátní bucket pro export leads.json z Railway."
+  description = "Privátní bucket pro export poptávek (osobní údaje)."
   value       = google_storage_bucket.leads_export.name
 }
 
