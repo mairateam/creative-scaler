@@ -7,7 +7,7 @@ Všechno v GCP se zakládá a mění jen přes Terraform. `gcloud` jen na čten�
 |---|---|
 | `envs/prod/apis.tf` | zapnutá API |
 | `envs/prod/firebase.tf` | Firebase na projektu, Hosting site `maira-creative-scaler`, doména `creativescaler.mairateam.com` |
-| `envs/prod/deploy_identity.tf` | Workload Identity Federation pro GitHub Actions a účet `hosting-deployer` jen s rolemi Firebase Hosting Admin a Service Usage Viewer |
+| `envs/prod/deploy_identity.tf` | Workload Identity Federation jen pro joby v prostředích `production` a `preview` a účet `hosting-deployer` jen s rolemi Firebase Hosting Admin a Service Usage Viewer |
 | `envs/prod/storage.tf` | privátní bucket pro budoucí export poptávek (osobní údaje) a bucket s ukázkami pro build, audit logy čtení |
 | `envs/prod/budget.tf` | rozpočtový alert (jen s vyplněným fakturačním účtem) |
 
@@ -79,13 +79,23 @@ Možné chyby:
 - **403 u `google_firebase_project`**: účet ještě nepřijal podmínky Firebase. Otevřete jednou
   console.firebase.google.com, přijměte je a apply zopakujte.
 
-**6. Ochrana produkce na GitHubu** (Settings → Environments → New environment `production`).
-Založte ji dřív než proměnné v kroku 7: chybějící prostředí si workflow založí sám, a to bez schválení.
-- Required reviewers: aspoň jeden člověk z týmu.
-- Deployment branches: jen `main`.
+**6. Ochrana nasazení na GitHubu** (Settings → Environments). Založte obě prostředí dřív než proměnné
+v kroku 7: chybějící prostředí si workflow založí sám, a to bez schválení.
+- `production`: Required reviewers aspoň jeden člověk z týmu, Deployment branches jen `main`.
+- `preview`: Required reviewers stejně, větve bez omezení (náhledy jdou z PR).
+- U obou vypnout „Allow administrators to bypass configured protection rules“.
 
-Repozitář je veřejný, proto ještě Settings → Actions → General → „Require approval for all outside
-collaborators“, aby workflow z cizích PR nespouštěl nikdo bez schválení.
+Google účet pro nasazení pustí jen z jobu v jednom z těchto prostředí (`deploy_identity.tf`). Bez
+schválení proto nenasadí nic ani upravený workflow na vedlejší větvi.
+
+Dál v Settings:
+- Actions → General: „Require approval for all outside collaborators“ (repozitář je veřejný), povolené
+  jen akce GitHubu, `google-github-actions/*` a `hashicorp/setup-terraform`, a „Require actions to be
+  pinned to a full-length commit SHA“.
+- Rules → Rulesets: ruleset `main` (jen přes PR, povinné kontroly `app` a `terraform`, bez force-push
+  a mazání, bez výjimek).
+- Advanced Security: Dependabot alerts a security updates, secret scanning s push protection, private
+  vulnerability reporting.
 
 **7. Proměnné pro GitHub Actions** (nejsou tajné, proto Variables, ne Secrets):
 
@@ -130,3 +140,6 @@ Stav k 19. 11. 2026: oba záznamy jsou na Cloudflare přidané; `mairateam.com` 
 Účet `hosting-deployer` má jen `roles/firebasehosting.admin` a `roles/serviceusage.serviceUsageViewer`
 (firebase-tools si před nasazením ověřuje, že je Hosting API zapnuté). Pokud nasazení skončí na chybějícím
 oprávnění, doplňte roli v `deploy_identity.tf` a pošlete ji přes PR. Ručně v konzoli nic nepřidávejte.
+
+Chyba přihlášení (`google-github-actions/auth` hlásí „The given credential is rejected by the attribute
+condition“) znamená, že job neběží v prostředí `production` ani `preview`. Doplňte do jobu `environment:`.

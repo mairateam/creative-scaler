@@ -17,3 +17,7 @@ media/
 !*.tfvars.example
 tfplan
 crash.log
+
+# Lokální poznámky a bezpečnostní zprávy. Repozitář je veřejný, do gitu nepatří.
+TODO.md
+docs/security/

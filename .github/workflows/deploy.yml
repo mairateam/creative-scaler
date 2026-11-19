@@ -1,9 +1,11 @@
 # Nasazení statické kalkulačky na Firebase Hosting (fáze 1).
-#   PR  → náhled na preview channel (pr-<číslo>, vyprší za 7 dní), adresa je v souhrnu běhu
+#   PR  → náhled na preview channel (pr-<číslo>, vyprší za 7 dní) po schválení v prostředí „preview“,
+#         adresa je v souhrnu běhu
 #   main → produkce, až po schválení v prostředí „production“
 #
 # Dokud v repozitáři není proměnná GCP_PROJECT_ID (projekt ještě není založený), oba joby se přeskočí.
 # Přihlášení přes Workload Identity Federation, žádný JSON klíč (infra/envs/prod/deploy_identity.tf).
+# Google pustí jen joby v prostředí preview nebo production; job bez `environment:` se nepřihlásí.
 # Proměnné repozitáře: GCP_PROJECT_ID, GCP_WIF_PROVIDER, GCP_DEPLOY_SA, BUILD_MEDIA_BUCKET (viz infra/README.md).
 name: Nasazení
 
@@ -32,6 +34,10 @@ jobs:
       && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Prostředí se schvalováním (Settings → Environments); bez něj Google token neuzná.
+    environment:
+      name: preview
+      url: ${{ steps.channel.outputs.url }}
     permissions:
       contents: read
       id-token: write
@@ -77,6 +83,7 @@ jobs:
         run: npm run check:static
 
       - name: Nasazení na preview channel
+        id: channel
         env:
           PROJECT: ${{ vars.GCP_PROJECT_ID }}
           CHANNEL: pr-${{ github.event.pull_request.number }}
@@ -89,8 +96,9 @@ jobs:
           node -e '
             const out = JSON.parse(require("fs").readFileSync("channel.json", "utf8"));
             if (out.status !== "success") { console.error(JSON.stringify(out)); process.exit(1); }
-            const lines = Object.values(out.result || {}).map(s => `- ${s.url} (vyprší ${s.expireTime})`);
-            console.log("### Náhled\n" + lines.join("\n"));
+            const sites = Object.values(out.result || {});
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, `url=${sites[0] ? sites[0].url : ""}\n`);
+            console.log("### Náhled\n" + sites.map(s => `- ${s.url} (vyprší ${s.expireTime})`).join("\n"));
           ' >> "$GITHUB_STEP_SUMMARY"
           cat "$GITHUB_STEP_SUMMARY"
 

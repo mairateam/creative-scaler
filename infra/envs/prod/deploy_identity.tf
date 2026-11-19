@@ -1,8 +1,13 @@
 # Nasazování z GitHub Actions přes Workload Identity Federation. Žádné JSON klíče.
 #
 # Repozitář je veřejný. GitHub nevydá OIDC token workflow z PR z forku, takže cizí PR se k účtu nedostane.
-# Token ale dostane každý workflow v tomto repozitáři (i z vedlejší větve), proto náhled i live sdílí
-# jeden účet: oddělit je jde jen ochranou na straně GitHubu (prostředí production se schvalováním).
+# Token ale dostane každý workflow v tomto repozitáři, i z vedlejší větve, kterou kdokoli s právem zápisu
+# upraví. Proto účet nejde použít podle repozitáře, jen z jobu v prostředí production nebo preview. Obě
+# prostředí na GitHubu vyžadují schválení (production navíc jen z větve main) a admini je nepřeskočí.
+# Hosting nemá oprávnění po kanálech, proto náhled i live sdílí jeden účet a oba hlídá schválení.
+locals {
+  deploy_environments = ["production", "preview"]
+}
 
 resource "google_iam_workload_identity_pool" "github" {
   project                   = var.project_id
@@ -24,10 +29,12 @@ resource "google_iam_workload_identity_pool_provider" "github" {
     "attribute.repository_id"       = "assertion.repository_id"
     "attribute.repository_owner_id" = "assertion.repository_owner_id"
     "attribute.ref"                 = "assertion.ref"
+    "attribute.environment"         = "assertion.environment"
   }
 
   # Číselná ID místo jména: po přejmenování nebo převodu repozitáře nemůže stejné jméno získat jiný repozitář.
-  attribute_condition = "assertion.repository_id == '${var.github_repository_id}' && assertion.repository_owner_id == '${var.github_repository_owner_id}'"
+  # Token bez prostředí (job bez `environment:`) nemá claim environment, podmínka selže a token se odmítne.
+  attribute_condition = "assertion.repository_id == '${var.github_repository_id}' && assertion.repository_owner_id == '${var.github_repository_owner_id}' && assertion.environment in ${jsonencode(local.deploy_environments)}"
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
@@ -41,9 +48,10 @@ resource "google_service_account" "hosting_deployer" {
 }
 
 resource "google_service_account_iam_member" "hosting_deployer_wif" {
+  for_each           = toset(local.deploy_environments)
   service_account_id = google_service_account.hosting_deployer.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository_id/${var.github_repository_id}"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.environment/${each.key}"
 }
 
 # Jen Hosting. Fáze 2 (přepis /api/** na Cloud Run) přidá roles/run.viewer.

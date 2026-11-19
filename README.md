@@ -50,8 +50,12 @@ npm run preview:static   # build + Firebase Hosting emulator na http://127.0.0.1
 Emulátor na Windows neposílá hlavičky z `firebase.json` (CSP, cache, noindex). Je to chyba v nástroji, ne v nastavení; na Linuxu a ve Firebase fungují a hlídá je `npm test`.
 
 **Nasazení** dělá GitHub Actions ([.github/workflows/deploy.yml](.github/workflows/deploy.yml)):
-- PR → náhled na preview channel (platí 7 dní), adresa je v souhrnu běhu.
+- PR → náhled na preview channel (platí 7 dní) po schválení v prostředí `preview`; adresa je u nasazení a v souhrnu běhu.
 - `main` → produkce po schválení v prostředí `production`.
+
+Účet pro nasazení jde použít jen z jobu v jednom z těchto dvou prostředí, takže bez schválení se nenasadí nic, ani z upraveného workflow na vedlejší větvi. `main` chrání ruleset: změna jen přes PR se zelenými kontrolami CI.
+
+Bezpečnostní chyby hlaste podle [SECURITY.md](SECURITY.md).
 
 Hlavičky (CSP, HSTS, `noindex`, cache) jsou ve [firebase.json](firebase.json). `/api/config` se přepisuje na `/config.json`, takže `public.js` načítá nastavení ze stejné adresy jako z Express serveru.
 
