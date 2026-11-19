@@ -1,6 +1,6 @@
 # Infrastruktura na GCP (fáze 1)
 
-Terraform pro veřejnou kalkulačku na Firebase Hosting. Plán a rozhodnutí jsou v [TODO.md](../TODO.md).
+Terraform pro veřejnou kalkulačku na Firebase Hosting.
 Všechno v GCP se zakládá a mění jen přes Terraform. `gcloud` jen na čtení a na jednorázový bucket pro stav.
 
 | Soubor | Co zakládá |
@@ -8,10 +8,11 @@ Všechno v GCP se zakládá a mění jen přes Terraform. `gcloud` jen na čten�
 | `envs/prod/apis.tf` | zapnutá API |
 | `envs/prod/firebase.tf` | Firebase na projektu, Hosting site `maira-creative-scaler`, doména `creativescaler.mairateam.com` |
 | `envs/prod/deploy_identity.tf` | Workload Identity Federation pro GitHub Actions a účet `hosting-deployer` jen s rolemi Firebase Hosting Admin a Service Usage Viewer |
-| `envs/prod/storage.tf` | privátní bucket pro export poptávek (osobní údaje) a bucket s ukázkami pro build, audit logy čtení |
+| `envs/prod/storage.tf` | privátní bucket pro budoucí export poptávek (osobní údaje) a bucket s ukázkami pro build, audit logy čtení |
 | `envs/prod/budget.tf` | rozpočtový alert (jen s vyplněným fakturačním účtem) |
 
-Fáze 1 má jen prod projekt (rozhodnutí 5). Náhledy z PR jdou na preview channels ve stejném projektu.
+Fáze 1 má záměrně jen prod projekt: je to statická stránka bez dat. Před fází 2 (Cloud Run, Firestore,
+osobní údaje) se dev projekt zváží znovu. Náhledy z PR jdou na preview channels ve stejném projektu.
 
 ## Projekt z Tectury
 
@@ -95,18 +96,18 @@ $vars.PSObject.Properties | ForEach-Object { gh variable set $_.Name --body $_.V
 
 Workflow [deploy.yml](../.github/workflows/deploy.yml) se tím zapne. Do té doby se jeho joby přeskakují.
 
-**8. Data z Railway** (export volume `/data`, viz TODO.md, sekce 2):
+**8. Ukázky a nastavení**
 
 ```powershell
-# ukázky AI kreativ: build si je při nasazení stáhne
-gcloud storage rsync <export>/media gs://<PROJECT_ID>-build-media/media
-# poptávky (osobní údaje): jen do privátního bucketu, nikdy do gitu ani na web
-gcloud storage cp <export>/leads.json gs://<PROJECT_ID>-leads-export/railway-<YYYY-MM-DD>/leads.json
+# ukázky AI kreativ (videa, obrázky): build si je při nasazení stáhne
+gcloud storage rsync <složka s ukázkami> gs://<PROJECT_ID>-build-media/media
 ```
 
-Z exportovaného `config.json` přeneste do [config/site.json](../config/site.json) jen veřejné hodnoty
-(build jiné klíče odmítne). Celý `config.json` uložte vedle poptávek do bucketu `-leads-export`;
-fáze 2 z něj naplní Firestore.
+V [config/site.json](../config/site.json) se na ně odkazuje jako `/media/<soubor>`. Soubor smí obsahovat
+jen veřejné hodnoty (build jiné klíče odmítne). Ceník, pravidla i ukázky se mění přes PR.
+
+Poptávky (osobní údaje) patří jen do bucketu `-leads-export`, nikdy do gitu ani na web. Z Railway
+žádné nebyly (vypnutý 18. 11. 2026), bucket je připravený pro fázi 2.
 
 **9. DNS pro správce** (doména `mairateam.com` je na Cloudflare):
 
@@ -119,9 +120,10 @@ Pošlete správci DNS oba výpisy a k nim:
 - záznamy pro `creativescaler` nastavit jako **DNS only** (šedý mráček), ne přes proxy Cloudflare,
 - záznam `_acme-challenge` dovolí vydat certifikát ještě před přepnutím provozu.
 
-Stav k 17. 11. 2026: `mairateam.com` nemá záznamy CAA (certifikát od Googlu nic neblokuje) a subdoména
-`creativescaler` zatím neexistuje, takže není co mazat. Pokud výpis zůstane prázdný, načtěte stav znovu:
-`terraform apply -refresh-only`. Průběh: `terraform output custom_domain_state`.
+Stav k 19. 11. 2026: oba záznamy jsou na Cloudflare přidané; `mairateam.com` nemá záznamy CAA
+(certifikát od Googlu nic neblokuje). Pokud výpis zůstane prázdný, načtěte stav znovu:
+`terraform apply -refresh-only`. Průběh: `terraform output custom_domain_state`; hotovo je, když
+`ownership`, `host` i `cert` končí na `_ACTIVE`.
 
 ## Když nasazení z CI selže na oprávnění
 

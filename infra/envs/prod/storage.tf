@@ -1,7 +1,7 @@
 # Dva privátní buckety. Žádný není veřejný; Firebase Hosting je nepotřebuje.
 
-# Export poptávek z Railway (leads.json): osobní údaje. Leží tu do importu do Firestore ve fázi 2
-# (rozhodnutí 6), pak se smaže. Přístup jen přes role na projektu (Owner/Editor), nic dalšího se nepřidává.
+# Export poptávek: osobní údaje. Z Railway žádné poptávky nebyly; bucket je připravený pro fázi 2
+# (export a import do Firestore). Přístup jen přes role na projektu (Owner/Editor), nic dalšího se nepřidává.
 resource "google_storage_bucket" "leads_export" {
   project                     = var.project_id
   name                        = "${var.project_id}-leads-export"

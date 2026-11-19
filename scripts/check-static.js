@@ -63,7 +63,7 @@ function checkDist(dist) {
 
   if (files.includes('index.html')) {
     const html = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
-    // rozhodnutí 2 (TODO.md): stránka je zatím noindex. Až se indexování schválí, upravte tuto kontrolu.
+    // Stránka je zatím noindex (indexování se schválí až po kontrole nasazení). Až se indexování schválí, upravte tuto kontrolu.
     if (!/<meta name="robots" content="noindex">/.test(html)) problems.push('index.html nemá <meta name="robots" content="noindex">');
     if (/<script>|<script\s+(?![^>]*\bsrc=)/i.test(html)) problems.push('index.html obsahuje inline skript (CSP ho zablokuje)');
     if (/\son[a-z]+\s*=/i.test(html)) problems.push('index.html obsahuje inline obsluhu události (onclick= apod.), CSP ji zablokuje');
