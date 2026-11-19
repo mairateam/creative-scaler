@@ -1,10 +1,14 @@
 # Akce jsou připnuté na SHA; Dependabot je udržuje aktuální. Stejně tak npm a Terraform providery.
+# cooldown: nová verze se navrhne až po několika dnech od vydání. Škodlivá vydání bývají do té doby
+# stažená. Bezpečnostní aktualizace cooldown nečekají.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 5
     groups:
       actions:
         patterns: ["*"]
@@ -13,6 +17,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 5
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
@@ -21,3 +27,5 @@ updates:
     directory: /infra/envs/prod
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 5
